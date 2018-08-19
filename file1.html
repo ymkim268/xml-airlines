@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+
+<html>
+    <!-- Kim, Young Min (kim268) -->
+    <!-- HW4 -->
+    <head>
+        <title>HW4</title>
+    </head>
+    
+    <style> 
+        
+        div#main_head {
+            margin-top: 5%;
+            text-align: center;
+            font-size: 50%;
+        }
+        
+        div#myQuery {
+            text-align: center;
+        }
+    
+    
+    </style>
+
+     
+    <body>
+        <div id= "main_head"> <h1>Enter URL for Airlines List XML File</h1> </div>
+        <div id= "myQuery">
+            <input id= "userInput" type="text" onkeypress= "enterPress(event)"> <br> <br>
+            <button id="submitButton" type="button" onclick= "genTable()">Submit Query</button>
+        </div>
+        <p id= "demo"></p>
+
+        <script>
+        
+        var xmlDoc;
+        var xmlURL = "airlinelsttest.xml";
+        var newWindow;
+        var userInput;
+        var txt = "";
+            
+        function getInput() {
+            var input = document.getElementById("userInput").value;
+            input = input.trim();
+            console.log("loadXML " + input);
+            // document.getElementById("demo").innerHTML = userInput;
+            
+            if(input == "") {
+                alert("Please Enter XML File.");
+                return null;
+            }
+            
+            if(!(input.includes(".xml"))) {
+                alert("Unable to open XML File.");
+                return null;
+            }
+            return input;
+        }
+            
+        // Parse Error Check for Child Nodes
+        // Helper Method for checkParseErrors()
+        function checkChildNodes(parentNode) {
+            if(parentNode.nodeName == "parsererror") {
+                // txt += "parse error!" + "<br>";
+                return false;
+            }
+            else {
+                var cNodeList = parentNode.childNodes;
+                var cNodeLen = cNodeList.length;
+                var s;
+                for(s=0; s < cNodeLen; s++) {
+                    if(cNodeList[s].nodeType != 3) {
+                        // txt += cNodeList[s].nodeName + "<br>";
+                        //console.log("nodeName: " + cNodeList[s].nodeName);
+                        if(cNodeList[s].nodeName == "parsererror") {
+                            // txt += "parse error!" + "<br>";
+                            return false;
+                        }
+                    
+                        if(cNodeList[s] != undefined && cNodeList[s].childNodes.length > 1) {
+                            checkChildNodes(cNodeList[s]);
+                        }
+                    }
+                }
+            }
+            return true;
+
+        }
+        
+        // Return True is no 'parsererror' in XML File
+        function checkParseErrors(parsingDoc) {
+            var rootELEM = xmlParsed.documentElement;
+            if(rootELEM.nodeName != "parsererror") {
+                var isValid = checkChildNodes(rootELEM);
+                return isValid;
+            }
+            else {
+                // txt += "parse error!" + "<br>";
+                // document.getElementById("demo").innerHTML = txt;
+                return false;
+            }
+        }
+            
+        // Return a list of children that are ELEM_Nodes
+        function getChildELEMNodes(parent) {
+            var elemNodeList = [];
+            
+            var childrenList = parent.childNodes;
+            var numChildren = parent.childNodes.length;
+            var c, e;
+            
+            e = 0; // list length of elemNodeList
+            for(c=0; c < numChildren; c++) {
+                if(childrenList.item(c).nodeType == 1) {
+                    elemNodeList[e] = childrenList.item(c);
+                    e++;
+                }
+            }
+            return elemNodeList;
+        }
+            
+            
+        // Load/Parse XML document
+        function loadXML(url) {
+            
+            if (window.XMLHttpRequest) {
+                var xmlHTTP = new XMLHttpRequest();  // code for IE7+, Firefox, Chrome, Opera, Safari
+            }
+            
+            xmlHTTP.open("GET", url, false); //open, send, responseXML are
+            xmlHTTP.send(); //properties of XMLHTTPRequest
+                
+            if(xmlHTTP.readyState == 4 && xmlHTTP.status == 200) {
+                console.log("xmlHTTP ready!");
+            }
+            else {
+                var xmlState = xmlHTTP.readyState;
+                var xmlStatus = xmlHTTP.status;
+                console.log("xmlHTTP ready: " + xmlState + " status: " + xmlStatus);
+                
+                alert("Unable to open XML File.");
+                return null;
+                
+            }
+            
+            xmlDoc = xmlHTTP.responseXML;
+            
+            var parser = new DOMParser();
+            xmlParsed = parser.parseFromString(xmlHTTP.responseText, "text/xml");
+            var isXMLValid = checkParseErrors(xmlParsed);
+            if(!(isXMLValid)) {
+                alert("Invalid XML file.");
+                return null;
+            }
+            
+            return xmlDoc;
+        }
+            
+        // Return array of column header titles
+        function getColNames(headerELEM) {
+            var header_childList = getChildELEMNodes(headerELEM); //Header ELEM ChildNodes
+            var header_nameList = [];
+            for(h_idx = 0; h_idx < header_childList.length; h_idx++) {
+                header_nameList[h_idx] = header_childList[h_idx].innerHTML.trim();
+                // txt += header_childList[h_idx].innerHTML + "<br>";
+                // console.log(header_childList[h_idx].innerHTML.trim());
+            }
+            return header_nameList;
+        }
+            
+        // Return array of row Tag names
+        function getRowTags(rowELEM) {
+            var row_childList = getChildELEMNodes(rowELEM); // Row1 ELEM ChildNodes
+            var row_tagList = [];
+            for(r_idx = 0; r_idx < row_childList.length; r_idx++) {
+                row_tagList[r_idx] = row_childList[r_idx].nodeName;
+                // txt += row_childList[r_idx].nodeName + "<br>";
+            }
+            return row_tagList;
+        }
+            
+        // Returns an array of ELEM_Name's Node Values
+        // ELEM_Name is a ELEM_NODE with 1 child node that is a TEXT_NODE
+        // Append value of the TEXT_NODE to list
+        function getELEMList(xmlDoc, ELEM_Name) {
+            var valueList = [];
+            var ELEM_List = xmlDoc.getElementsByTagName(ELEM_Name);
+            
+            for(i=0; i<ELEM_List.length; i++) {
+                
+                // ELEM_Name Tag Present, but value of tag is empty
+                if(ELEM_List[i].childNodes.length != 1) {
+                    valueList[i] = "";
+                }
+                else {
+                    // returnArray[i] = airlineElemList[i].innerHTML;
+                    // console.log("elemValue: " + ELEM_List[i].childNodes[0].nodeValue.trim());
+                    valueList[i] = ELEM_List[i].childNodes[0].nodeValue.trim();
+                }
+            }
+            return valueList;
+        }
+        
+        // Return a string separated by ',' for each Hub Value of Hubs ELEM
+        // if 0 Hub tags in Hubs ELEM, return empty string ""
+        function getHubInfo(index, ELEM_List) {
+            var valueString = "";
+            var subELEM_List = ELEM_List[index].children; // Only ELEM Nodes
+            var num_subELEM = ELEM_List[index].childElementCount;
+
+            var i = 0;
+            for(i=0; i<num_subELEM; i++) {
+                // console.log("hub: " + subELEM_List[i].innerHTML.trim());
+                if(i != num_subELEM - 1) {
+                    valueString += subELEM_List[i].innerHTML.trim() + ",";
+                }
+                else {
+                    valueString += subELEM_List[i].innerHTML.trim();
+                }
+            }
+            return valueString;
+        }
+            
+        // Return an array of 'Hubs' ELEM_Node's 'Hub' sub-ELEM_Node's Node Values
+        // 'Hub' sub-ELEM_Node's Node Values obtained using getHubInfo()
+        function getHUBSList(xmlDoc, tagName) {
+            var valueList = [];
+            var ELEM_List = xmlDoc.getElementsByTagName(tagName);
+            
+            for(i=0; i<ELEM_List.length; i++) {
+                
+                // ELEM_Name Tag Present, but value of tag is empty
+                if(ELEM_List[i].childElementCount < 1) {
+                    valueList[i] = "";
+                }
+                else {
+                    valueList[i] = getHubInfo(i, ELEM_List);
+                   ;
+                }
+            }
+            return valueList;
+        }
+            
+        
+        // Return a HTML string of unorder list for Hubs Section
+        // Helper method for genTable()
+        function getHubHTML(a_hub_str) {
+            var hub_ul = "";
+            var a_hub_list = a_hub_str.split(",");
+            var a_hub_len = a_hub_list.length;
+            var li_idx;
+            
+            if(a_hub_len > 0 && a_hub_list[0] != "") {
+                hub_ul += "<ul>";
+                hub_ul += "<li style=\"font-weight: bold;\">" + a_hub_list[0] + "</li>";
+            
+                for(li_idx = 1; li_idx < a_hub_len; li_idx++) {
+                    hub_ul += "<li>" + a_hub_list[li_idx] + "</li>";
+
+                }
+                hub_ul += "</ul>";
+            }
+            return hub_ul;
+        }
+            
+        // Generates HTML of Table to write onto newWindow (pop-up)
+        function genTable() {
+            
+            userInput = getInput();
+            if(userInput == null) {
+                return null;
+            }
+            
+            xmlDoc = loadXML(userInput);
+            if(xmlDoc == null) {
+                return null;
+            }
+            
+            
+            root = xmlDoc.documentElement; // Mainline ELEM (root)
+            rootHeight = root.childNodes.length;
+            
+            root_childList = getChildELEMNodes(root);
+            
+            if(root_childList.length != 1) {
+                alert("Error in XML file: Missing Table Info.");
+                return null;
+            }
+            
+            table_ELEM = root_childList[0]; // Table ELEM (first child)
+            table_childList = getChildELEMNodes(table_ELEM); // Header & Row ELEMs
+            table_childList_len = table_childList.length; // Header[0] & Row[#]
+            
+            if((table_childList.length - 1) <= 0) {
+                alert("Error in XML file: Airline Companies can't be empty.");
+                return null;
+            }
+            
+            
+            header_childList = getChildELEMNodes(table_childList[0]); //Header ELEM ChildNodes 
+            row1_childList = getChildELEMNodes(table_childList[1]); // Row1 ELEM ChildNodes
+            hubs_childList = getChildELEMNodes(row1_childList[2]); // Row1 Hubs ELEM ChildNodes
+            
+            
+            
+            var colElemList = getColNames(table_childList[0]);
+            var rowTagList = getRowTags(table_childList[1]);
+            
+            var airlineList = getELEMList(xmlDoc, rowTagList[0]); // Airline
+            var iataList = getELEMList(xmlDoc, rowTagList[1]); // IATA
+            var notesList = getELEMList(xmlDoc, rowTagList[3]); // Notes
+            var homepageList = getELEMList(xmlDoc, rowTagList[4]); // HomePage
+            var planeList = getELEMList(xmlDoc, rowTagList[5]); // Plane
+            var hubsList = getHUBSList(xmlDoc, rowTagList[2]); // Hubs
+            
+            var rowNum = table_childList.length - 1;
+            var colNum = header_childList.length;
+            
+            var row = 0;
+            var col = 0;
+            
+            var html_txt = "";
+            
+            // Header of the Table
+            var tb_header = "<tr>";
+            for(col = 0; col < colNum; col++) {
+                tb_header += "<th>"+ colElemList[col] + "</th>";
+            }
+            tb_header += "</tr>";
+            
+            var tb_row = "";
+            for(row = 0; row < rowNum; row++) {
+                tb_row += "<tr>";
+                // Airline Section of Table
+                tb_row += "<td>" + airlineList[row] + "</td>";
+                // IATA Section of Table
+                tb_row += "<td>" + iataList[row] + "</td>";
+                
+                // Hubs Section - unorder list - of Table
+                var hub_ul_html = getHubHTML(hubsList[row]);
+                tb_row += "<td>" + hub_ul_html + "</td>";
+                
+                // Notes Section of Table
+                tb_row += "<td>" + notesList[row] + "</td>";
+                
+                // HomePage Section - anchor links - of Table
+                var tb_anchor = "<a href=\"" + homepageList[row] + "\">" + homepageList[row] + "</a>";
+                tb_row += "<td>" + tb_anchor + "</td>";
+                
+                // Plane Section - img - of Table
+                var tb_img = "<img src=\"" + planeList[row] + "\" width = 100% height= auto;>";
+                tb_row += "<td>" + tb_img + "</td>";
+                tb_row += "</tr>";
+            }
+            
+            html_txt += "<html> <head> <title></title> </head>";
+            html_txt += "<style> table, th, td { border: 1px solid black;} </style>";
+            html_txt += "<body>";
+            html_txt += "<table style=\"width:100%\">"  + tb_header + tb_row + "</table>";
+            html_txt += "<noscript></noscript></body></html>";
+            
+            newWindow = window.open("", "", "width=800,height=500,scrollbars=yes");
+            newWindow.document.write(html_txt);
+            }
+            
+            
+        function enterPress(event) {
+            var whatKey = event.which || event.keyCode;
+            // console.log("Unicode value is: " + whatKey);
+            if(whatKey == 13) {
+                genTable();
+            }
+            
+        }
+
+    </script>
+        
+        
+    <noscript></noscript></body>
+    
+    
+
+
+</html>
